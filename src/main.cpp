@@ -3,7 +3,7 @@ M5 Stack Multi Clock
  - NTP based clock
  - Display other info (env data etc) (To be implemented)
  - Send MQTT messages with front buttons (Work status)
-s
+
 History
     2020/09/08  Initial
     2021/03/07  Update fonts (preset to TTF)
@@ -16,7 +16,7 @@ History
 #include <Arduino_JSON.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
-#include <ESPmDNS.h>
+// #include <ESPmDNS.h>
 #include "M5FontRender.h"
 #include <ArduinoOTA.h>
 #include "../../include/wifiinfo.h"
@@ -58,17 +58,27 @@ const int dispYClock  = 80;
 const int dispYError  = 200;
 const int dispYStatus = 220;
 const int dispYButton = 235;
+const int ysecOffset = fontClockSizeHM - fontClockSizeSS;
 
 //
-uint8_t hh;
-uint8_t mm;
-uint8_t ss;
-byte omm = 60;
-byte oss = 60;
+struct tm timeInfo;
+uint16_t nowYear;
+uint8_t nowMon;
+uint8_t nowDay;
+uint8_t nowHour;
+uint8_t nowMin;
+uint8_t nowSec;
+byte prevYear = 3000;
+byte prevMon  = 15;
+byte prevDay  = 33;
+byte prevHour = 25;
+byte prevMin  = 66;
+byte prevSec  = 66;
 byte xcolon;
 byte xsecs;
-struct tm timeInfo;
 unsigned long now5min;
+int dispPosSSX;
+int dispPosSSY;
 
 M5FontRender render;
 WiFiClient espClient;
@@ -154,7 +164,18 @@ void setup(void) {
             ESP.restart();
         }
     }
-    MDNS.begin("m5stack01");
+//    MDNS.begin("m5stack01");
+/*
+    if (!MDNS.begin("m5stack01")) {
+        Serial.println("Error setting up MDNS responder!");
+        while (1) {
+            delay(1000);
+            Serial.print(".");
+        }
+    }
+    Serial.println("mDNS responder started");
+*/
+
     randomSeed(micros());
 
     M5.Lcd.fillRect(0, dispYError, 320, 16, TFT_CYAN);
@@ -189,6 +210,22 @@ void setup(void) {
     render.printf("22.2 \u00b0C   55.5%%   THI 32");
     render.unloadFont();
 
+    M5.lcd.fillRect(0, dispYClock + 20, 320, fontClockSizeHM, TFT_BLACK);
+
+    render.loadFont(fontClock);
+    render.setTextSize(fontClockSizeHM);
+    render.setTextColor(TFT_YELLOW, TFT_BLACK);
+    render.setCursor(0, dispYClock);
+    render.printf("%02d", 88);
+    render.seekCursor(7, -6);
+    render.printf(":");
+    render.seekCursor(7, 6);
+    render.printf("%02d", 88);
+    render.seekCursor(12, ysecOffset);
+    dispPosSSX = render.getCursorX();
+    dispPosSSY = render.getCursorY();
+    render.unloadFont();
+
     now5min = millis() - 1000*60*6;
 
     ArduinoOTA.onStart([]() {
@@ -206,63 +243,74 @@ void loop() {
     ArduinoOTA.handle();
 
     getLocalTime(&timeInfo);
-    hh = timeInfo.tm_hour;
-    mm = timeInfo.tm_min;
-    ss = timeInfo.tm_sec;
+    nowYear = timeInfo.tm_year;
+    nowMon  = timeInfo.tm_mon;
+    nowDay  = timeInfo.tm_mday;
+    nowHour = timeInfo.tm_hour;
+    nowMin  = timeInfo.tm_min;
+    nowSec  = timeInfo.tm_sec;
     HTTPClient http;
 
-    if (oss != ss) {
+    if (prevSec != nowSec) {
 //        int xpos = 0;
         int ypos = dispYClock;
-        int ysecOffset = fontClockSizeHM - fontClockSizeSS;
+//        int ysecOffset = fontClockSizeHM - fontClockSizeSS;
         // Set font
 //        M5.Lcd.setTextFont(4);
         render.loadFont(fontClock);
-        render.setTextSize(fontClockSizeHM);
         render.setTextColor(TFT_WHITE, TFT_BLACK);
-        render.setCursor(0, dispYClock);
-        if (omm != mm) {
-            omm = mm;
+
+        prevSec = nowSec;
+        M5.lcd.fillRect(dispPosSSX, dispPosSSY + 10, 76, fontClockSizeSS, TFT_BLACK);
+        render.setTextSize(fontClockSizeSS);
+        render.setCursor(dispPosSSX, dispPosSSY);
+        render.printf("%02d", nowSec);
+
+        if (prevMin != nowMin) {
+            prevMin = nowMin;
+            render.setTextSize(fontClockSizeHM);
+            render.setCursor(0, dispYClock);
             M5.lcd.fillRect(0, ypos + 20, 320, fontClockSizeHM, TFT_BLACK);
 
-//            if (hh < 10) render.printf("0");
-            render.printf("%02d", hh);
+//            if (nowHour < 10) render.printf("0");
+            render.printf("%02d", nowHour);
             render.seekCursor(7, -6);
             render.printf(":");
             render.seekCursor(7, 6);
-//            if (mm < 10) M5.Lcd.print("0");
-            render.printf("%02d", mm);
+//            if (nowMin < 10) M5.Lcd.print("0");
+            render.printf("%02d", nowMin);
             xsecs = render.getCursorX();
             render.setTextSize(fontClockSizeSS);
             render.seekCursor(12, ysecOffset);
             xsecs += 12;
 //            xsecs = render.getCursorX();
 //            render.printf(" ");
-//            if (mm < 10) M5.Lcd.print("0");
-            render.printf("%02d", ss);
+//            if (nowMin < 10) M5.Lcd.print("0");
+            render.printf("%02d", nowSec);
             /*
-            if (hh < 10) xpos += M5.Lcd.drawChar('0', xpos, ypos, 8);
-                xpos += M5.Lcd.drawNumber(hh, xpos, ypos, 8);
+            if (nowHour < 10) xpos += M5.Lcd.drawChar('0', xpos, ypos, 8);
+                xpos += M5.Lcd.drawNumber(nowHour, xpos, ypos, 8);
                 xcolon = xpos;
                 xpos += M5.Lcd.drawChar(':', xpos, ypos - 8, 8);
-            if (mm < 10) xpos += M5.Lcd.drawChar('0', xpos, ypos, 8);
-                xpos += M5.Lcd.drawNumber(mm, xpos, ypos, 8);
+            if (nowMin < 10) xpos += M5.Lcd.drawChar('0', xpos, ypos, 8);
+                xpos += M5.Lcd.drawNumber(nowMin, xpos, ypos, 8);
                 xsecs = xpos;
             */
+            if (prevDay != nowDay) {
+
+            }
         }
-        if (oss != ss) {
-            oss = ss;
-            M5.lcd.fillRect(xsecs, ypos + ysecOffset + 10, 76, fontClockSizeSS, TFT_BLACK);
-            render.setTextSize(fontClockSizeSS);
-            render.setCursor(xsecs, ypos + ysecOffset);
-            render.printf("%02d", ss);
-            /*
-            xpos = xsecs;
-            xpos += M5.Lcd.drawChar(' ', xsecs, ysecs, 6);
-            if (ss < 10) xpos += M5.Lcd.drawChar('0', xpos, ysecs, 6);
-            M5.Lcd.drawNumber(ss, xpos, ysecs, 6);
-            */
-        }
+//        prevSec = nowSec;
+//        M5.lcd.fillRect(dispPosSSX, dispPosSSY + 10, 76, fontClockSizeSS, TFT_BLUE);
+//        render.setTextSize(fontClockSizeSS);
+//        render.setCursor(dispPosSSX, dispPosSSY);
+//        render.printf("%02d", nowSec);
+        /*
+        xpos = xsecs;
+        xpos += M5.Lcd.drawChar(' ', xsecs, ysecs, 6);
+        if (nowSec < 10) xpos += M5.Lcd.drawChar('0', xpos, ysecs, 6);
+        M5.Lcd.drawNumber(nowSec, xpos, ysecs, 6);
+        */
         render.unloadFont();
     }
     M5.update();
