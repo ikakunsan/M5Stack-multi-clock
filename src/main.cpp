@@ -261,24 +261,24 @@ void loop() {
         render.setTextColor(TFT_WHITE, TFT_BLACK);
 
         prevSec = nowSec;
-        M5.lcd.fillRect(dispPosSSX, dispPosSSY + 10, 76, fontClockSizeSS, TFT_BLACK);
+//        M5.lcd.fillRect(dispPosSSX, dispPosSSY + 10, 76, fontClockSizeSS, TFT_BLACK);
         render.setTextSize(fontClockSizeSS);
         render.setCursor(dispPosSSX, dispPosSSY);
-        render.printf("%02d", nowSec);
+        render.printf2("%02d", nowSec);
 
         if (prevMin != nowMin) {
             prevMin = nowMin;
             render.setTextSize(fontClockSizeHM);
             render.setCursor(0, dispYClock);
-            M5.lcd.fillRect(0, ypos + 20, 320, fontClockSizeHM, TFT_BLACK);
+//            M5.lcd.fillRect(0, ypos + 20, 320, fontClockSizeHM, TFT_BLACK);
 
 //            if (nowHour < 10) render.printf("0");
-            render.printf("%02d", nowHour);
+            render.printf2("%02d", nowHour);
             render.seekCursor(7, -6);
-            render.printf(":");
+            render.printf2(":");
             render.seekCursor(7, 6);
 //            if (nowMin < 10) M5.Lcd.print("0");
-            render.printf("%02d", nowMin);
+            render.printf2("%02d", nowMin);
             xsecs = render.getCursorX();
             render.setTextSize(fontClockSizeSS);
             render.seekCursor(12, ysecOffset);
