@@ -20,6 +20,7 @@ History
 #include "M5FontRender.h"
 #include <ArduinoOTA.h>
 #include "../../include/wifiinfo.h"
+#include <LovyanGFX.hpp>
 
 // WiFi and MQTT related
 const char* ssid          = MY_WIFI_SSID;
