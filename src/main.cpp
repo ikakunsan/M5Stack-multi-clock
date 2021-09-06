@@ -14,7 +14,6 @@ message: JSON
     }
 
 2020/09/06  Initial. wio Terminalから移植（BME280関係は削除）
-
 */
 
 #include <M5Stack.h>
