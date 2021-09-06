@@ -16,7 +16,6 @@ History
 #include <Arduino_JSON.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
-// #include <ESPmDNS.h>
 #include "M5FontRender.h"
 #include <ArduinoOTA.h>
 #include "../../include/wifiinfo.h"
@@ -35,9 +34,12 @@ const long  gmtOffset_sec = 3600 * 9;
 const int   daylightOffset_sec = 0; // 3600;
 
 // MQTT messages
-const char* mqttMsg1 = "{\"FGColor\":\"WHITE\", \"BGColor\":\"RED\", \"textMain\":\"会議中です\", \"textSub\":\"食事は会議が終わってから\"}";
-const char* mqttMsg2 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"YELLOW\", \"textMain\":\"仕事中\", \"textSub\":\"呼ばれたらきりのいいとこで降りていきます\"}";
-const char* mqttMsg3 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"GREEN\", \"textMain\":\"今日は仕事終わり\", \"textSub\":\"呼ばれれば降りていきます\"}";
+const char* mqttMsg1 = "{\"FGColor\":\"WHITE\", \"BGColor\":\"RED\", \"textEng\":\"Meeting\", \
+                         \"textMain\":\"会議中です\", \"textSub\":\"対応不可です。入室の際は気をつけて\"}";
+const char* mqttMsg2 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"YELLOW\", \"textEng\":\"Working\", \
+                        \"textMain\":\"仕事中です\", \"textSub\":\"きりのいいところで対応します\"}";
+const char* mqttMsg3 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"GREEN\", \"textEng\":\"Off duty\", \
+                         \"textMain\":\"仕事終わり\", \"textSub\":\"呼ばれればすぐに対応します\"}";
 
 // Font definitions
 const char* fontClock       = "/MicrogrammaD-Medium.ttf";
@@ -84,9 +86,6 @@ int dispPosSSY;
 M5FontRender render;
 WiFiClient espClient;
 PubSubClient client(espClient);
-//const char* rootCACertificate = \
-//"-----END CERTIFICATE-----\n";
-//const char* rootCACertificate = "-----END CERTIFICATE-----\n";
 
 // Decralation for functions
 int isTFTColor(const char* colorName);
@@ -103,7 +102,6 @@ void callback(char* topic, byte* payload, unsigned int length)
     JSONVar myObject = JSON.parse(msgText);
     msgBGColor = isTFTColor((const char*) myObject["BGColor"]);
 
-//    M5.Lcd.fillRect(0, 210, 320, 10, msgBGColor);
     M5.Lcd.fillRect(0, dispYStatus, 320, dispBtnHeight, msgBGColor);
 
 }
@@ -144,7 +142,6 @@ void setup(void) {
 
     Serial.begin(115200);
     M5.begin();
-  //M5.Power.begin();
     M5.Lcd.fillScreen(TFT_BLACK);
 
     M5.Lcd.fillRect(0, dispYError, 320, 16, TFT_BLACK);
@@ -165,17 +162,6 @@ void setup(void) {
             ESP.restart();
         }
     }
-//    MDNS.begin("m5stack01");
-/*
-    if (!MDNS.begin("m5stack01")) {
-        Serial.println("Error setting up MDNS responder!");
-        while (1) {
-            delay(1000);
-            Serial.print(".");
-        }
-    }
-    Serial.println("mDNS responder started");
-*/
 
     randomSeed(micros());
 
@@ -201,9 +187,6 @@ void setup(void) {
     M5.Lcd.fillRect(dispXBtn3, dispYButton, 60, dispBtnHeight, TFT_GREEN);
     M5.Lcd.fillRect(0, dispYStatus, 320, dispBtnHeight, TFT_WHITE);
 
-//    M5.Lcd.setCursor(0, dispYEnv);
-//    M5.Lcd.setTextFont(4);
-//    M5.Lcd.print("22.2 \u00b0C   55.5%   THI 32");
     render.setCursor(0, dispYEnv);
     render.loadFont(fontTextEnv);
     render.setTextSize(fontTextEnvSize);
@@ -253,16 +236,11 @@ void loop() {
     HTTPClient http;
 
     if (prevSec != nowSec) {
-//        int xpos = 0;
         int ypos = dispYClock;
-//        int ysecOffset = fontClockSizeHM - fontClockSizeSS;
-        // Set font
-//        M5.Lcd.setTextFont(4);
         render.loadFont(fontClock);
         render.setTextColor(TFT_WHITE, TFT_BLACK);
 
         prevSec = nowSec;
-//        M5.lcd.fillRect(dispPosSSX, dispPosSSY + 10, 76, fontClockSizeSS, TFT_BLACK);
         render.setTextSize(fontClockSizeSS);
         render.setCursor(dispPosSSX, dispPosSSY);
         render.printf2("%02d", nowSec);
@@ -271,65 +249,24 @@ void loop() {
             prevMin = nowMin;
             render.setTextSize(fontClockSizeHM);
             render.setCursor(0, dispYClock);
-//            M5.lcd.fillRect(0, ypos + 20, 320, fontClockSizeHM, TFT_BLACK);
 
-//            if (nowHour < 10) render.printf("0");
             render.printf2("%02d", nowHour);
             render.seekCursor(7, -6);
             render.printf2(":");
             render.seekCursor(7, 6);
-//            if (nowMin < 10) M5.Lcd.print("0");
             render.printf2("%02d", nowMin);
             xsecs = render.getCursorX();
             render.setTextSize(fontClockSizeSS);
             render.seekCursor(12, ysecOffset);
             xsecs += 12;
-//            xsecs = render.getCursorX();
-//            render.printf(" ");
-//            if (nowMin < 10) M5.Lcd.print("0");
             render.printf("%02d", nowSec);
-            /*
-            if (nowHour < 10) xpos += M5.Lcd.drawChar('0', xpos, ypos, 8);
-                xpos += M5.Lcd.drawNumber(nowHour, xpos, ypos, 8);
-                xcolon = xpos;
-                xpos += M5.Lcd.drawChar(':', xpos, ypos - 8, 8);
-            if (nowMin < 10) xpos += M5.Lcd.drawChar('0', xpos, ypos, 8);
-                xpos += M5.Lcd.drawNumber(nowMin, xpos, ypos, 8);
-                xsecs = xpos;
-            */
             if (prevDay != nowDay) {
 
             }
         }
-//        prevSec = nowSec;
-//        M5.lcd.fillRect(dispPosSSX, dispPosSSY + 10, 76, fontClockSizeSS, TFT_BLUE);
-//        render.setTextSize(fontClockSizeSS);
-//        render.setCursor(dispPosSSX, dispPosSSY);
-//        render.printf("%02d", nowSec);
-        /*
-        xpos = xsecs;
-        xpos += M5.Lcd.drawChar(' ', xsecs, ysecs, 6);
-        if (nowSec < 10) xpos += M5.Lcd.drawChar('0', xpos, ysecs, 6);
-        M5.Lcd.drawNumber(nowSec, xpos, ysecs, 6);
-        */
         render.unloadFont();
     }
     M5.update();
-
-/*
-    if ((millis() - now5min) > 1000*60*5) {
-        // access site per 5 mins
-        now5min = millis();
-        http.begin(currencyRateUrl);
-        int httpCode = http.GET();
-        if (httpCode > 0) {
-//          String payload = http.getString();
-//          M5.Lcd.print(payload);
-        M5.Lcd.print(httpCode);
-    }
-    http.end();
-    }
-*/
 
     if (!client.connected()) {
         reconnect();
