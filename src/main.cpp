@@ -7,6 +7,7 @@ M5 Stack Multi Clock
 History
     2020/09/08  Initial
     2021/03/07  Update fonts (preset to TTF)
+    2022/08/20  Moved font location (from / to /ttf/)
 *******************************************************************/
 
 #include <M5Stack.h>
@@ -42,10 +43,10 @@ const char* mqttMsg3 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"GREEN\", \"textEng
                          \"textMain\":\"仕事終わり\", \"textSub\":\"呼ばれればすぐに対応します\"}";
 
 // Font definitions
-const char* fontClock       = "/MicrogrammaD-Medium.ttf";
+const char* fontClock       = "/ttf/MicrogrammaD-Medium.ttf";
 const int   fontClockSizeHM = 64;
 const int   fontClockSizeSS = 38;
-const char* fontTextEnv     = "/MicrogrammaD-Medium.ttf";
+const char* fontTextEnv     = "/ttf/MicrogrammaD-Medium.ttf";
 //const char* fontTextEnv     = "/Eurostile.ttf";
 const int   fontTextEnvSize = 24;
 
