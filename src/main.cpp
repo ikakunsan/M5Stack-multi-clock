@@ -10,56 +10,69 @@ History
     2022/08/20  Moved font location (from / to /ttf/)
 *******************************************************************/
 
-#include <M5Stack.h>
-#include <WiFi.h>
+#include "../../include/wifiinfo.h"
+#include "M5FontRender.h"
 #include "time.h"
-#include <PubSubClient.h>
+#include <ArduinoOTA.h>
 #include <Arduino_JSON.h>
 #include <HTTPClient.h>
-#include <WiFiClientSecure.h>
-#include "M5FontRender.h"
-#include <ArduinoOTA.h>
-#include "../../include/wifiinfo.h"
 #include <LovyanGFX.hpp>
+#include <M5Stack.h>
+#include <PubSubClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <myconfig.h>
 
 // WiFi and MQTT related
-const char* ssid          = MY_WIFI_SSID;
-const char* wifipassword  = MY_WIFI_PASSWORD;
-const char* mqttServer    = MY_MQTT_BROKER;
-const char* thisMqttTopic = "mqttmsgboard1";
-//NTP related
-const char* ntpServer1 = MY_NTP_SERVER1;
-const char* ntpServer2 = MY_NTP_SERVER2;
-const char* ntpServer3 = MY_NTP_SERVER3;
-const long  gmtOffset_sec = 3600 * 9;
-const int   daylightOffset_sec = 0; // 3600;
+const char *ssid = MY_WIFI_SSID;
+const char *wifipassword = MY_WIFI_PASSWORD;
+
+#ifdef USE_STATIC_IP
+const char *staticIp = MY_IPADDRESS;
+const char *gateway = MY_GATEWAY;
+const char *subnetMask = MY_SUBNET_MASK;
+const char *dnsPrimary = MY_NAME_SERVER1;
+const char *dnsSecondary = MY_NAME_SERVER2;
+#endif
+
+const char *mqttServer = MY_MQTT_BROKER;
+const char *thisMqttTopic = "mqttmsgboard1";
+// NTP related
+const char *ntpServer1 = MY_NTP_SERVER1;
+const char *ntpServer2 = MY_NTP_SERVER2;
+const char *ntpServer3 = MY_NTP_SERVER3;
+const long gmtOffset_sec = 3600 * 9;
+const int daylightOffset_sec = 0; // 3600;
 
 // MQTT messages
-const char* mqttMsg1 = "{\"FGColor\":\"WHITE\", \"BGColor\":\"RED\", \"textEng\":\"Meeting\", \
+const char *mqttMsg1 =
+    "{\"FGColor\":\"WHITE\", \"BGColor\":\"RED\", \"textEng\":\"Meeting\", \
                          \"textMain\":\"会議中です\", \"textSub\":\"対応不可です。入室の際は気をつけて\"}";
-const char* mqttMsg2 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"YELLOW\", \"textEng\":\"Working\", \
+const char *mqttMsg2 =
+    "{\"FGColor\":\"BLACK\", \"BGColor\":\"YELLOW\", \"textEng\":\"Working\", \
                         \"textMain\":\"仕事中です\", \"textSub\":\"きりのいいところで対応します\"}";
-const char* mqttMsg3 = "{\"FGColor\":\"BLACK\", \"BGColor\":\"GREEN\", \"textEng\":\"Off duty\", \
+const char *mqttMsg3 =
+    "{\"FGColor\":\"BLACK\", \"BGColor\":\"GREEN\", \"textEng\":\"Off duty\", \
                          \"textMain\":\"仕事終わり\", \"textSub\":\"呼ばれればすぐに対応します\"}";
 
 // Font definitions
-const char* fontClock       = "/ttf/MicrogrammaD-Medium.ttf";
-const int   fontClockSizeHM = 64;
-const int   fontClockSizeSS = 38;
-const char* fontTextEnv     = "/ttf/MicrogrammaD-Medium.ttf";
-//const char* fontTextEnv     = "/Eurostile.ttf";
-const int   fontTextEnvSize = 24;
+const char *fontClock = "/ttf/MicrogrammaD-Medium.ttf";
+const int fontClockSizeHM = 64;
+const int fontClockSizeSS = 38;
+const char *fontTextEnv = "/ttf/MicrogrammaD-Medium.ttf";
+// const char* fontTextEnv     = "/Eurostile.ttf";
+const int fontTextEnvSize = 24;
 
 // Display Positions
 // Buttons
-const int dispXBtn1  = 35;   // width 60
-const int dispXBtn2  = 130;  // width 60
-const int dispXBtn3  = 225;  // width 60
-const int dispBtnHeight = 5;    // height
+const int dispXBtn1 = 35;    // width 60
+const int dispXBtn2 = 130;   // width 60
+const int dispXBtn3 = 225;   // width 60
+const int dispBtnHeight = 5; // height
 // Y positions
-const int dispYEnv    = 0;
-const int dispYClock  = 80;
-const int dispYError  = 200;
+const int dispYEnv = 0;
+const int dispYClock = 80;
+const int dispYError = 200;
 const int dispYStatus = 220;
 const int dispYButton = 235;
 const int ysecOffset = fontClockSizeHM - fontClockSizeSS;
@@ -73,11 +86,11 @@ uint8_t nowHour;
 uint8_t nowMin;
 uint8_t nowSec;
 byte prevYear = 3000;
-byte prevMon  = 15;
-byte prevDay  = 33;
+byte prevMon = 15;
+byte prevDay = 33;
 byte prevHour = 25;
-byte prevMin  = 66;
-byte prevSec  = 66;
+byte prevMin = 66;
+byte prevSec = 66;
 byte xcolon;
 byte xsecs;
 unsigned long now5min;
@@ -89,27 +102,24 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 // Decralation for functions
-int isTFTColor(const char* colorName);
+int isTFTColor(const char *colorName);
 
 // Functions
-void callback(char* topic, byte* payload, unsigned int length)
-{
+void callback(char *topic, byte *payload, unsigned int length) {
     char msgText[256];
-    int  msgBGColor;
+    int msgBGColor;
 
     for (int i = 0; i < length; i++) {
         msgText[i] = (char)payload[i];
     }
     JSONVar myObject = JSON.parse(msgText);
-    msgBGColor = isTFTColor((const char*) myObject["BGColor"]);
+    msgBGColor = isTFTColor((const char *)myObject["BGColor"]);
 
     M5.Lcd.fillRect(0, dispYStatus, 320, dispBtnHeight, msgBGColor);
-
 }
 
-void reconnect()
-{
-  // Loop until we're reconnected to MQTT broker
+void reconnect() {
+    // Loop until we're reconnected to MQTT broker
     M5.Lcd.setTextFont(1);
     while (!client.connected()) {
         M5.Lcd.fillRect(0, dispYError, 320, 16, TFT_MAGENTA);
@@ -152,7 +162,21 @@ void setup(void) {
     M5.Lcd.print("Connecting to ");
     M5.Lcd.print(ssid);
 
-    if(WiFi.begin(ssid, wifipassword) != WL_DISCONNECTED) {
+#ifdef USE_STATIC_IP
+    IPAddress staticIp;
+    staticIp.fromString(MY_IPADDRESS);
+    IPAddress gateway;
+    gateway.fromString(MY_GATEWAY);
+    IPAddress subnet;
+    subnet.fromString(MY_SUBNET_MASK);
+    IPAddress primaryDNS;
+    primaryDNS.fromString(MY_NAME_SERVER1);
+    IPAddress secondaryDNS;
+    secondaryDNS.fromString(MY_HOME_SERVER2);
+    WiFi.config(staticIp, gateway, subnet, primaryDNS, secondaryDNS);
+#endif
+
+    if (WiFi.begin(ssid, wifipassword) != WL_DISCONNECTED) {
         ESP.restart();
     }
     while (WiFi.status() != WL_CONNECTED) {
@@ -172,9 +196,10 @@ void setup(void) {
     M5.Lcd.print("Connected. IP address: ");
     M5.Lcd.println(WiFi.localIP());
     delay(2000);
-    M5.Lcd.fillScreen(TFT_BLACK); //Black background
+    M5.Lcd.fillScreen(TFT_BLACK); // Black background
 
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1, ntpServer2, ntpServer3);
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1, ntpServer2,
+               ntpServer3);
 
     client.setServer(mqttServer, 1883);
     client.setCallback(callback);
@@ -211,7 +236,7 @@ void setup(void) {
     dispPosSSY = render.getCursorY();
     render.unloadFont();
 
-    now5min = millis() - 1000*60*6;
+    now5min = millis() - 1000 * 60 * 6;
 
     ArduinoOTA.onStart([]() {
         String type;
@@ -229,11 +254,11 @@ void loop() {
 
     getLocalTime(&timeInfo);
     nowYear = timeInfo.tm_year;
-    nowMon  = timeInfo.tm_mon;
-    nowDay  = timeInfo.tm_mday;
+    nowMon = timeInfo.tm_mon;
+    nowDay = timeInfo.tm_mday;
     nowHour = timeInfo.tm_hour;
-    nowMin  = timeInfo.tm_min;
-    nowSec  = timeInfo.tm_sec;
+    nowMin = timeInfo.tm_min;
+    nowSec = timeInfo.tm_sec;
     HTTPClient http;
 
     if (prevSec != nowSec) {
@@ -262,7 +287,6 @@ void loop() {
             xsecs += 12;
             render.printf("%02d", nowSec);
             if (prevDay != nowDay) {
-
             }
         }
         render.unloadFont();
@@ -290,7 +314,7 @@ void loop() {
     client.loop();
 }
 
-int isTFTColor(const char* colorName) {
+int isTFTColor(const char *colorName) {
     if (strcmp(colorName, "BLACK") == 0) {
         return TFT_BLACK;
     } else if (strcmp(colorName, "NAVY") == 0) {
