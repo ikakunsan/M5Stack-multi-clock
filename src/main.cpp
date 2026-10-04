@@ -18,6 +18,7 @@ History
 #include <HTTPClient.h>
 #include <LovyanGFX.hpp>
 #include <M5Stack.h>
+#include <esp_task_wdt.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -119,9 +120,14 @@ void callback(char *topic, byte *payload, unsigned int length) {
 }
 
 void reconnect() {
+    int retry_count = 0;
     // Loop until we're reconnected to MQTT broker
     M5.Lcd.setTextFont(1);
     while (!client.connected()) {
+        retry_count++;
+        if (retry_count >= RECONECT_RETRY_MAX) {
+            ESP.restart();
+        }
         M5.Lcd.fillRect(0, dispYError, 320, 16, TFT_MAGENTA);
         M5.Lcd.setCursor(0, dispYError);
         M5.Lcd.setTextColor(TFT_WHITE);
@@ -150,6 +156,10 @@ void reconnect() {
 
 void setup(void) {
     int secondPassed = 0;
+
+    // Watchdog timer initialization
+    esp_task_wdt_init(WDT_TIMEOUT_SECONDS, true);
+    esp_task_wdt_add(NULL);
 
     Serial.begin(115200);
     M5.begin();
@@ -250,6 +260,8 @@ void setup(void) {
 }
 
 void loop() {
+    esp_task_wdt_reset(); // Reset watchdog timer
+
     ArduinoOTA.handle();
 
     getLocalTime(&timeInfo);
