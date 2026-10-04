@@ -27,13 +27,13 @@ History
 const char *ssid = MY_WIFI_SSID;
 const char *wifipassword = MY_WIFI_PASSWORD;
 
-#ifdef USE_STATIC_IP
-const char *staticIp = MY_IPADDRESS;
-const char *gateway = MY_GATEWAY;
-const char *subnetMask = MY_SUBNET_MASK;
-const char *dnsPrimary = MY_NAME_SERVER1;
-const char *dnsSecondary = MY_NAME_SERVER2;
-#endif
+// #ifdef USE_STATIC_IP
+// const char *staticIp = MY_IPADDRESS;
+// const char *gateway = MY_GATEWAY;
+// const char *subnetMask = MY_SUBNET_MASK;
+// const char *dnsPrimary = MY_NAME_SERVER1;
+// const char *dnsSecondary = MY_NAME_SERVER2;
+// #endif
 
 const char *mqttServer = MY_MQTT_BROKER;
 const char *thisMqttTopic = "mqttmsgboard1";
@@ -85,8 +85,8 @@ uint8_t nowDay;
 uint8_t nowHour;
 uint8_t nowMin;
 uint8_t nowSec;
-byte prevYear = 3000;
-byte prevMon = 15;
+// byte prevYear = 3000;
+// byte prevMon = 15;
 byte prevDay = 33;
 byte prevHour = 25;
 byte prevMin = 66;
@@ -172,7 +172,7 @@ void setup(void) {
     IPAddress primaryDNS;
     primaryDNS.fromString(MY_NAME_SERVER1);
     IPAddress secondaryDNS;
-    secondaryDNS.fromString(MY_HOME_SERVER2);
+    secondaryDNS.fromString(MY_NAME_SERVER2);
     WiFi.config(staticIp, gateway, subnet, primaryDNS, secondaryDNS);
 #endif
 
@@ -262,7 +262,7 @@ void loop() {
     HTTPClient http;
 
     if (prevSec != nowSec) {
-        int ypos = dispYClock;
+        // int ypos = dispYClock;
         render.loadFont(fontClock);
         render.setTextColor(TFT_WHITE, TFT_BLACK);
 
