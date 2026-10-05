@@ -260,8 +260,6 @@ void setup(void) {
 }
 
 void loop() {
-    esp_task_wdt_reset(); // Reset watchdog timer
-
     ArduinoOTA.handle();
 
     getLocalTime(&timeInfo);
@@ -308,6 +306,8 @@ void loop() {
     if (!client.connected()) {
         reconnect();
     }
+    // Reset watchdog timer
+    esp_task_wdt_reset();
     client.loop();
 
     if (M5.BtnA.wasReleased()) {
